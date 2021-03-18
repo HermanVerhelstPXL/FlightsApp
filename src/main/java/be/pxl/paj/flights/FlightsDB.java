@@ -1,10 +1,9 @@
 package be.pxl.paj.flights;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +15,8 @@ import java.util.Properties;
  */
 public class FlightsDB {
 
+	private static final String QUERY_LOGIN_PREP_STATEMENT = "SELECT * FROM CUSTOMER WHERE handle = ?";
+	private PreparedStatement queryLogin;
 	/**
 	 * Maximum number of reservations to allow on one flight.
 	 */
@@ -25,6 +26,7 @@ public class FlightsDB {
 	 * Holds the connection to the database.
 	 */
 	private Connection conn;
+	private static final Logger LOGGER = LogManager.getLogger(FlightsDB.class);
 
 	/**
 	 * Opens a connection to the database using the given settings.
@@ -51,6 +53,7 @@ public class FlightsDB {
 	 */
 	public void init() throws SQLException {
 		// TODO: create prepared statements here
+		queryLogin = conn.prepareStatement(QUERY_LOGIN_PREP_STATEMENT);
 	}
 
 	/**
@@ -59,7 +62,24 @@ public class FlightsDB {
 	 * @return The authenticated user or null if login failed.
 	 */
 	public User logIn(String handle, String password) throws SQLException {
-		// TODO: implement this properly
+		try {
+			queryLogin.setString(1, handle);
+			ResultSet results = queryLogin.executeQuery();
+			results.next();
+			System.out.println(results.getString("password"));
+			if (results.getString("password").equals(password)) {
+				int id = results.getInt("uid");
+				String handleDB = results.getString("handle");
+				String fullName = results.getString("name");
+				return new User(id, handleDB, fullName);
+			} else {
+				throw new PasswordException("Wrong password is given!");
+			}
+		} catch (SQLException e) {
+			LOGGER.error(e.getMessage());
+		} catch (PasswordException e) {
+			LOGGER.warn(e.getMessage());
+		}
 		return null;
 	}
 
